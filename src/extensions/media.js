@@ -60,7 +60,7 @@ var MediaSource = window.MediaSource || window.WebKitMediaSource
  *           <li>`available`: the part has been downloaded and can be appended
  *           <li>`added`: the part has been appended to the source buffer
  * @property {number} partNumber - Identifier for a video part
- * @property {ArrayBuffer} part - Actual video data
+ * @property {ArrayBuffer} buffer - Actual video data
  * @property {Array.<Chunk>} [chunks] - If a part is received in
  *           multiple chunks, the chunks will be stored here until the part is
  *           complete
@@ -103,6 +103,7 @@ function Media(sourceURL, sourceTag, autoload = false) {
   this.complete = false
   this.autoload = autoload
   this.parts = [] // TODO Tricky indexes
+  this.promiseBuffer = this.initSource()
 }
 
 /**
@@ -239,58 +240,62 @@ Media.prototype.getRangeOfHead = function() {
 }
 
 /**
- * Get the first `available` part and append it to the buffer if no other
- * updates are taking place. This function will be called each time the source
- * buffer is done appending a video part (`SourceBuffer@updateend`) and while
- * there are some parts available. If the previous added part was the last part
- * of the media (all parts have been added to the source buffer) then the media
- * source will be closed.
- */
-var appendQueuedParts = function() {
-  var nextPart = find(part => part.status === 'available', this.parts)
-
-  if(typeof nextPart === 'undefined') {
-    this.sourceBuffer.removeEventListener('updateend', appendQueuedParts)
-
-    if(this.isComplete() &&
-       this.mediaSource.readyState === 'open' &&
-       !this.sourceBuffer.updating) {
-      this.mediaSource.endOfStream()
-    }
-  } else if(!this.sourceBuffer.updating) {
-    // Write current chunk
-    this.sourceBuffer.appendBuffer(new Uint8Array(nextPart))
-    nextPart.status = 'added'
-  }
-}
-
-/**
  * Uses the first part of the video file to initialize a media source and its
  * corresponding source buffer.
  *
  * @function Media#initSource
- * @param {ArrayBuffer} head - Every information contained from the start of the
- *        media file to start of the first cluster
+ * @return
  */
-Media.prototype.initSource = function(head) {
-
-  this.head = head
-
-  var mediaSource = new MediaSource()
+Media.prototype.initSource = function() {
   var codec = 'video/webm; codecs="vorbis, vp8"' // TODO #17 Codecs as options
   var video = this.sourceTag
   // When mediaSource is ready we append the parts in a new source buffer.
-  mediaSource.addEventListener('sourceopen', () => {
-    // Start recursion
-    var sourceBuffer = mediaSource.addSourceBuffer(codec)
-    sourceBuffer.addEventListener('updateend', appendQueuedParts.bind(this))
-    sourceBuffer.appendBuffer(head)
-    this.sourceBuffer = sourceBuffer
-  }, false)
+  return new Promise((resolve) => {
+    var mediaSource = new MediaSource()
+    mediaSource.addEventListener('sourceopen', () => {
+      var sourceBuffer = mediaSource.addSourceBuffer(codec)
+      this.sourceBuffer = sourceBuffer
+      resolve(sourceBuffer)
+    }, false)
+    this.mediaSource = mediaSource
+    // Triggers the "sourceopen" event of the MediaSource object
+    video.src = window.URL.createObjectURL(mediaSource)
+  })
+}
 
-  this.mediaSource = mediaSource
-  // Triggers the "sourceopen" event of the MediaSource object
-  video.src = window.URL.createObjectURL(mediaSource)
+/**
+ *
+ *
+ * @param {SourceBuffer} sourceBuffer
+ * @param {ArrayBuffer|ArrayBufferView} buffer
+ * @param {number} partNumber
+ */
+Media.prototype.appendBuffer = function(buffer, parts, partNumber = '-1') {
+  return function(sourceBuffer) {
+    return new Promise(function(resolve) {
+      sourceBuffer.addEventListener('updateend', function updateend() {
+        // Resolve promise when the update is finished
+        sourceBuffer.removeEventListener('updateend', updateend)
+        if(partNumber !== -1 && typeof parts !== 'undefined') {
+          parts[partNumber].status = 'added'
+        }
+        resolve(sourceBuffer)
+      })
+      sourceBuffer.appendBuffer(buffer)
+    })
+  }
+}
+
+/**
+ * Appends the head to the source buffer
+ *
+ * @param {ArrayBuffer} head - Every information contained from the start of the
+ *        media file to start of the first cluster
+ */
+Media.prototype.appendHead = function(head) {
+  this.head = head
+  this.promiseBuffer = this.promiseBuffer.then(this.appendBuffer(head))
+  return this.promiseBuffer
 }
 
 /**
@@ -299,50 +304,53 @@ Media.prototype.initSource = function(head) {
  * appended when the source buffer becomes available.
  *
  * @function Media#append
- * @param {number} partNumber - Id for the part
- * @param {Array|ArrayBuffer} data - A part of the media
+ * @param {number|string} number - Id for the part
+ * @param {Array|ArrayBuffer} buffer - A part of the media
  */
 Media.prototype.append = function(number, buffer) {
-  var [ partNumber, chunkNumber, numberOfChunks ] = String(number).split(':')
-  // TODO Rename partObject variable
-  var partObject = this.parts[partNumber]
-  if(partObject.status !== 'pending') {
+  var [ partNumber, chunkNumber, numberOfChunks ] =
+        String(number).split(':').map(Number)
+  var part = this.parts[partNumber]
+
+  if(part.status !== 'pending') {
     throw new Error('Unexpected part has been received')
   }
 
   if(typeof chunkNumber !== 'undefined') {
-    if(!partObject.hasOwnProperty('chunks')) {
-      partObject.chunks = []
+    if(!part.hasOwnProperty('chunks')) {
+      part.chunks = []
     }
-    partObject.chunks[chunkNumber] = buffer
+    part.chunks[chunkNumber] = buffer
+    part.numberOfChunks = numberOfChunks
 
     // Check if we have all chunks
-    if(partObject.chunks.length === numberOfChunks) {
-      partObject.part = flatten(partObject.chunks)
-      partObject.status = 'available'
+    if(part.chunks.length === numberOfChunks) {
+      // We need an ArrayBuffer or an ArrayBufferView
+      part.buffer = new Uint8Array(flatten(part.chunks))
+      part.status = 'available'
     }
   } else {
     // Full part
-    partObject.part = buffer
-    partObject.status = 'available'
+    part.buffer = new Uint8Array(buffer)
+    part.status = 'available'
   }
 
-  // Add part if available
-  // TODO Refactor as a function shard with `appendQueuedParts`
-  if(partObject.status === 'available' &&
-     this.hasOwnProperty('sourceBuffer') &&
-     this.mediaSource.readyState === 'open' &&
-     !this.sourceBuffer.updating) {
-    this.sourceBuffer.addEventListener('updateend',
-                                       appendQueuedParts.bind(this))
-    this.sourceBuffer.appendBuffer(new Uint8Array(buffer))
-    this.parts[partNumber].status = 'added'
+  if(part.status === 'available') {
+    this.promiseBuffer = this.promiseBuffer
+      .then(this.appendBuffer(part.buffer, this.parts, partNumber))
+      .then((sourceBuffer) => {
+        if(this.isComplete()) {
+          this.mediaSource.endOfStream()
+        }
+        return Promise.resolve(sourceBuffer)
+      })
   }
+  return this.promiseBuffer
 }
 
 /**
  * WebRTC prevents Datachannels messages to be greater than 64KB. This function
- * returns an orderd list of chunks composing the video part.
+ * returns an ordered list of chunks composing the video part.
  *
  * @function Media#getChunkedPart
  * @param {number} chunkSize - Maximum size for a chunk
@@ -351,12 +359,14 @@ Media.prototype.append = function(number, buffer) {
  *         Uint8Array as they take less space when serialized as string
  */
 Media.prototype.getChunkedPart = function(chunkSize, partNumber) {
-  if(typeof this.parts[partNumber] !== 'undefined') {
-    var part = this.parts[partNumber].part // ArrayBuffer
+  if(typeof this.parts[partNumber] !== 'undefined' &&
+     contains(this.parts[partNumber].status, ['available', 'added'])) {
+    var part = this.parts[partNumber].buffer
     var numberOfChunks = Math.ceil(part.byteLength / chunkSize)
     var chunks = []
     for(let i = 0; i < numberOfChunks; ++i) {
-      let chunk = new Uint8Array(part.slice(i * chunkSize, (i + 1) * chunkSize))
+      // Chromium does not support #slice for TypedArray
+      let chunk = part.subarray(i * chunkSize, (i + 1) * chunkSize)
       // Mesages will be smaller if we use arrays instead of typed arrays.
       // Spread operator iterates through all the values of the iterator
       chunks.push([...chunk.values()])

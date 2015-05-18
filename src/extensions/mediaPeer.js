@@ -150,7 +150,7 @@ var onhead = function(message) {
   var head = message.data
   var url = message.url
   var media = this.files.get(url)
-  media.initSource(head)
+  media.appendHead(head)
 
   // We have the head, we can request random parts now
   askForNextParts.call(this, media, MediaPeer.concurrentParts)
@@ -188,6 +188,14 @@ var onpart = function(message) {
 
   var media = this.files.get(message.url)
   media.append(message.number, message.data)
+  if(media.isComplete()) {
+    this.dispatchMessage({
+      type: 'media:complete',
+      from: this.id,
+      to: this.id,
+      data: message.url
+    })
+  }
   // TODO (Storage) storeChunk(message.number, new Uint8Array(message.data))
 
   // Ask for a new part
@@ -275,11 +283,11 @@ var updateGossipDescriptor = function(message) {
  */
 var updateRemoteInformation = function(message) {
   // Initial Data is
-  // peer.view = { id: id,
-  //               age: age,
+  // peer.view = [{ id: remote1,
+  //               age: 7,
   //               media: {
   //                 'url1': [1,2,3,6],
-  //                 'url2': [5] }}
+  //                 'url2': [5] }}]
   // Transformed in
   // file.remotes = { remote1: [1,2,3,6],
   //                  remote2: [3,4] }
@@ -364,7 +372,7 @@ MediaPeer.concurrentParts = 3
  * @type {number}
  * @see https://code.google.com/p/webrtc/issues/detail?id=2270#c35
  */
-MediaPeer.chunkSize = 17500
+MediaPeer.chunkSize = 1000
 
 /**
  * Timeout indicating how long the peer should wait for an answer from remote

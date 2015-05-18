@@ -194,13 +194,13 @@ function GossipWorker() {
   this.view = []
 
   // Initialisation options
-  this.once('gossip:init', oninit)
+  this.once('gossip:init', oninit.bind(this))
   // As soon as the first view is received, start the active thread
-  this.once('first-view', onfirstview)
+  this.once('first-view', onfirstview.bind(this))
   // Request from the peer to update its descriptor
-  this.on('gossip:descriptor-update', ondescriptorupdate)
+  this.on('gossip:descriptor-update', ondescriptorupdate.bind(this))
   // Partial view request from a remote peer
-  this.on('gossip:request-exchange', passiveThread)
+  this.on('gossip:request-exchange', passiveThread.bind(this))
 }
 
 GossipWorker.prototype = Object.create(MessageEmitter.prototype)

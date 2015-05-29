@@ -177,7 +177,8 @@ Peer.prototype.send = function(message, timeout, callback) {
   if(to === this.id) {
     // Message for itself
     this.dispatchMessage(message)
-  } if(this.connections.has(to) && this.connections.get(to).status === 'open') {
+  } else if(this.connections.has(to) &&
+            this.connections.get(to).status === 'open') {
     // Node is already connected to desired recipient
     this.connections.get(to).send(message)
   } else if(Array.isArray(message.route) &&
@@ -193,7 +194,10 @@ Peer.prototype.send = function(message, timeout, callback) {
     // Its a queuable message
     var timestamp = Date.now()
     this.queue.push({ message, callback, timeout, timestamp })
-    this.requestPeer(message.to)
+    if(!contains(to, ['signal', 'source'])) {
+      // If message is destined to a peer
+      this.requestPeer(to)
+    }
   }
 }
 

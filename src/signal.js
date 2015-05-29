@@ -48,6 +48,18 @@ function Signal(peer, options) {
   })
 
   this.socket = socket
+
+  if(url.indexOf('herokuapp') !== -1) {
+    var keepalive = window.setInterval(() => {
+      this.send({
+        type: 'signal:keepalive',
+        from: peer.id,
+        to: 'signal',
+        data: ''
+      })
+    }, 30000)
+  }
+  socket.addEventListener('close', () => window.clearInterval(keepalive))
 }
 
 /**

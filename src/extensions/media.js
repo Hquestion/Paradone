@@ -36,7 +36,7 @@ var MediaSource = window.MediaSource || window.WebKitMediaSource
 /**
  * @typedef {Object} Metadata
  * @desc Information about the video file downloaded from the server
- * @property {number} total_size - Total size in bytes of the file
+ * @property {number} size - Total size in bytes of the file
  * @property {number} duration - Length in seconds of the video
  * @property {Array.<Metacluster>} clusters - Informations about video parts
  */
@@ -221,7 +221,7 @@ Media.prototype.getRangeOfPart = function(partNumber) {
   var lastPart = meta.clusters.length - 1
   var range = meta.clusters[partNumber].offset + '-'
   if(partNumber === lastPart) {
-    range += meta.size
+    range += meta.size - 1
   } else {
     range += meta.clusters[partNumber + 1].offset - 1
   }
@@ -244,7 +244,6 @@ Media.prototype.getRangeOfHead = function() {
  * corresponding source buffer.
  *
  * @function Media#initSource
- * @return
  */
 Media.prototype.initSource = function() {
   var codec = 'video/webm; codecs="vorbis, vp8"' // TODO #17 Codecs as options
@@ -264,13 +263,19 @@ Media.prototype.initSource = function() {
 }
 
 /**
+ * This function returns a Promise generator. The `buffer` argument contains the
+ * data that should be appended to a `SourceBuffer` object. This function is
+ * used to create a chain of promises allowing to safely append new buffers to a
+ * source buffer. The `sourceBuffer` instance needs to be returned by the
+ * `resolve` of the previous promise in the chain. The Promise will resolve when
+ * the update of the source buffer has ended and will return the `sourceBuffer`.
  *
- *
- * @param {SourceBuffer} sourceBuffer
  * @param {ArrayBuffer|ArrayBufferView} buffer
+ * @param {Array.<Part>} parts
  * @param {number} partNumber
+ * @return {function(SourceBuffer):Promise<SourceBuffer>}
  */
-Media.prototype.appendBuffer = function(buffer, parts, partNumber = '-1') {
+var appendBuffer = function(buffer, parts, partNumber = '-1') {
   return function(sourceBuffer) {
     return new Promise(function(resolve) {
       sourceBuffer.addEventListener('updateend', function updateend() {
@@ -287,25 +292,34 @@ Media.prototype.appendBuffer = function(buffer, parts, partNumber = '-1') {
 }
 
 /**
- * Appends the head to the source buffer
+ * Appends the head to the source buffer. The `head` of the media gives the
+ * required informations to the browser media player. The head has to be
+ * appended to the source buffer before any other part.
  *
+ * @function Media#appendHead
  * @param {ArrayBuffer} head - Every information contained from the start of the
  *        media file to start of the first cluster
+ * @return {Promise<SourceBuffer>} A promise resolving to the updated source
+ *         buffer allowing to chain media updates
  */
 Media.prototype.appendHead = function(head) {
   this.head = head
-  this.promiseBuffer = this.promiseBuffer.then(this.appendBuffer(head))
+  this.promiseBuffer = this.promiseBuffer.then(appendBuffer(head))
   return this.promiseBuffer
 }
 
 /**
- * Appends a new video part to the source buffer. In the case where the source
- * buffer is still processing a previous part, the new part will be queued and
- * appended when the source buffer becomes available.
+ * Appends a new video part to the source buffer. If the buffer transmitted is a
+ * full part it is instantly queued in the "Source Buffer Update Chain". In the
+ * case where the data would be a chunk of a part, this chunk is stored until
+ * the part is complete. If the metadata is correctly defined the part can be
+ * appended (after the head of the media) in any order.
  *
  * @function Media#append
  * @param {number|string} number - Id for the part
  * @param {Array|ArrayBuffer} buffer - A part of the media
+ * @return {Promise<SourceBuffer>} A promise resolving to the updated source
+ *         buffer allowing to chain media updates
  */
 Media.prototype.append = function(number, buffer) {
   var [ partNumber, chunkNumber, numberOfChunks ] =
@@ -337,7 +351,7 @@ Media.prototype.append = function(number, buffer) {
 
   if(part.status === 'available') {
     this.promiseBuffer = this.promiseBuffer
-      .then(this.appendBuffer(part.buffer, this.parts, partNumber))
+      .then(appendBuffer(part.buffer, this.parts, partNumber))
       .then((sourceBuffer) => {
         if(this.isComplete()) {
           this.mediaSource.endOfStream()

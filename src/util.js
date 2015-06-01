@@ -50,7 +50,7 @@ export function shuffleArray(array) {
  *
  * @function module:util~shallowSort
  * @template T
- * @param {(T,T) => boolean} sortFunction - Compare two elements
+ * @param {function(T,T): boolean} sortFunction - Compare two elements
  * @param {Array.<T>} array - Source array
  * @return {Array.<T>} Sorted elements in a shallow copy
  */

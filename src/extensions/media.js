@@ -89,6 +89,7 @@ var MediaSource = window.MediaSource || window.WebKitMediaSource
  * @property {Metadata} metadata - Information about the media file
  * @property {Array.<Part>} parts - List of the 'video' parts of the media: A
  *           part that contains actual data and begins with a keyframe.
+ * @property {Promise} promiseBuffer - Promise chain used to load the media
  * @property {Array.<Remote>} remotes - Media's meta-data
  * @property {SourceBuffer} sourceBuffer - Buffer where the parts are appended
  * @property {HTMLMediaElement} sourceTag - HTML element where hte media will
@@ -103,7 +104,6 @@ function Media(sourceURL, sourceTag, autoload = false) {
   this.complete = false
   this.autoload = autoload
   this.parts = [] // TODO Tricky indexes
-  this.promiseBuffer = this.initSource()
 }
 
 /**
@@ -206,6 +206,7 @@ Media.prototype.setMetadata = function(meta) {
       status: 'needed'
     }
   }
+  this.promiseBuffer = this.initSource(meta.codec)
 }
 
 /**
@@ -245,8 +246,8 @@ Media.prototype.getRangeOfHead = function() {
  *
  * @function Media#initSource
  */
-Media.prototype.initSource = function() {
-  var codec = 'video/webm; codecs="vorbis, vp8"' // TODO #17 Codecs as options
+Media.prototype.initSource = function(codec =
+                                      'video/webm; codecs="vorbis, vp8"') {
   var video = this.sourceTag
   // When mediaSource is ready we append the parts in a new source buffer.
   return new Promise((resolve) => {

@@ -2,12 +2,15 @@
   "name": "Paradone",
   "version": "0.3.0",
   "description": "Peer-to-peer assisted media diffusion in the browser with WebRTC and MediaSource",
+  "keywords": ["p2p", "html5", "streaming", "webrtc", "gossip", "media source"],
+  "homepage": "https://paradone.github.io",
   "author": "GaspardP",
   "license": "AGPLv3",
   "repository": {
     "type": "git",
     "url": "git://github.com/Paradone/Paradone.git"
   },
+  "bugs": "https://github.com/Paradone/Paradone/issues",
   "main": "src/index.js",
   "scripts": {
     "build": "./scripts/build.sh",
@@ -20,27 +23,27 @@
     "watch": "./node_modules/karma/bin/karma start karma.conf.js --port 9877 --autoWatch --singleRun false"
   },
   "dependencies": {
-    "localforage": "1.2.X",
-    "ramda": "0.13.X"
+    "localforage": "1.2.x",
+    "ramda": "0.14.x"
   },
   "devDependencies": {
-    "babel": "5.1.X",
-    "babelify": "6.0.X",
-    "browserify": "9.0.X",
-    "esperanto": "0.6.X",
+    "babel": "5.4.x",
+    "babelify": "6.1.x",
+    "browserify": "10.2.x",
+    "esperanto": "0.7.x",
     "jsdoc": "^3.3.0-beta3",
-    "karma": "0.12.X",
-    "karma-browserify": "4.1.X",
-    "karma-chai": "0.1.X",
-    "karma-chrome-launcher": "0.1.X",
-    "karma-coverage": "0.2.X",
-    "karma-firefox-launcher": "0.1.X",
-    "karma-mocha": "0.1.X",
-    "karma-mocha-reporter": "1.X.X",
-    "karma-notify-reporter": "0.1.X",
-    "karma-sinon": "1.X.X",
-    "uglify-js": "2.X.X",
-    "watchify": "3.X.X",
+    "karma": "0.12.x",
+    "karma-browserify": "4.2.x",
+    "karma-chai": "0.1.x",
+    "karma-chrome-launcher": "0.1.x",
+    "karma-coverage": "0.3.x",
+    "karma-firefox-launcher": "0.1.x",
+    "karma-mocha": "0.1.x",
+    "karma-mocha-reporter": "1.x.x",
+    "karma-notify-reporter": "0.1.x",
+    "karma-sinon": "1.x.x",
+    "uglify-js": "2.x.x",
+    "watchify": "3.x.x",
     "workerify": "git://github.com/josephros/workerify.git"
   },
   "browserify": {

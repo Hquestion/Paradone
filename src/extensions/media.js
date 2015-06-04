@@ -359,6 +359,14 @@ Media.prototype.append = function(number, buffer) {
         }
         return Promise.resolve(sourceBuffer)
       })
+    let meta = this.metadata.clusters[partNumber]
+    if(meta.hasOwnProperty('sha256')) {
+      checkDigest(meta.sha256, part.buffer).then(result => {
+        if(!result) {
+          console.error('Invalid hash for part', partNumber)
+        }
+      })
+    }
   }
   return this.promiseBuffer
 }
@@ -389,4 +397,42 @@ Media.prototype.getChunkedPart = function(chunkSize, partNumber) {
     return chunks
   }
   return []
+}
+
+/**
+ * Computes the SHA-256 digest of a part and check if it matches the digest
+ * passed as argument. This can be used to check that the content of the media
+ * has not been modified by a peer.
+ *
+ * @param {string} validDigest
+ * @param {string} buffer
+ * @param {boolean} [requireMatch=false]
+ * @return {Promise<boolean>} A promise indicating if the two digests match
+ */
+var checkDigest = function(validDigest, buffer, requireMatch = false) {
+  // TODO The digest should be computed by a Web Worker
+  return window.crypto.subtle.digest('SHA-256', buffer)
+    .then(digestBuffer => {
+      var digest = ''
+      var view = new DataView(digestBuffer)
+      for(var i = 0; i < view.byteLength; i += 4) {
+        // We use getUint32 to reduce the number of iterations
+        var value = view.getUint32(i)
+        // One Uint32 element is 4 bytes or 8 hex chars
+        var padding = '00000000'
+        // toString(16) will transform the integer into the corresponding hex
+        // string but will remove any initial "0"
+        var paddedValue = (padding + value.toString(16)).slice(-padding.length)
+        digest += paddedValue
+      }
+      return digest
+    })
+    .then(computedDigest => validDigest === computedDigest)
+    .catch(e => {
+      if(e.code === e.NOT_SUPPORTED_ERR) {
+        console.error('Sha256-digest unavailable:', e.message)
+        return !requireMatch
+      }
+      throw e
+    })
 }

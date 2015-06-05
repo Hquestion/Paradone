@@ -48,18 +48,14 @@ function Signal(peer, options) {
   })
 
   this.socket = socket
+  this.url = url
 
+  // If the signal is connected to a Heroku instance the connection will be
+  // closed by the server after 30 seconds of inactivity
   if(url.indexOf('herokuapp') !== -1) {
-    var keepalive = window.setInterval(() => {
-      this.send({
-        type: 'signal:keepalive',
-        from: peer.id,
-        to: 'signal',
-        data: ''
-      })
-    }, 30000)
+    activateKeepAlive(socket, peer.id)
   }
-  socket.addEventListener('close', () => window.clearInterval(keepalive))
+
 }
 
 /**
@@ -72,4 +68,23 @@ Signal.prototype.send = function(message) {
   message.ttl = 0
   message = JSON.stringify(message)
   this.socket.send(message)
+}
+
+/**
+ * Contact the signaling server every now and then to ensure the communication
+ * is not closed due to inactivity
+ *
+ * @param {WebSocket} socket - The socket we need to keep open
+ * @param {string} id - Id of the peer
+ */
+var activateKeepAlive = function(socket, id) {
+  var keepalive = window.setInterval(() => {
+    socket.send(JSON.stringify({
+      type: 'signal:keepalive',
+      from: id,
+      to: 'signal',
+      data: ''
+    }))
+  }, 30000)
+  socket.addEventListener('close', () => window.clearInterval(keepalive))
 }

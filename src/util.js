@@ -133,13 +133,50 @@ export function getRemoteFile(fileUrl, responseType = 'blob', range = '') {
  * Checks if an element is contained in the given array
  *
  * @function module:util~contains
- * @template T
- * @param {T} element - Element to check
- * @param {Array.<T>} array - Array to match element against
- * @return {boolean} Whether element is in array or not
+ * @param {number|string} element - Element to check
+ * @param {Array.<number|string>} array - Array to match element against
+ * @return {boolean} Whether element is in the array or not
  */
 export function contains(element, array) {
   return array.indexOf(element) >= 0
+}
+
+/**
+ * Check if an object containing the given properties is contained in the given
+ * array. The check is a non strict deep check: the matched element must at
+ * least have the same properties as the template.
+ *
+ * Empty array will always return false.
+ * Empty templates `{}` or `[]` will match any non empty `array`
+ *
+ * @function module:util~containsMatch
+ * @param {Object} template - Can be an array
+ * @param {Array.<Object>} array - Elements to check
+ * @return {boolean} Whether a match is found or not
+ */
+export function containsMatch(template, array) {
+
+  let recursiveMatch = (template, object) => {
+    // We have to find every property of the template in the object
+    for(let prop in template) {
+      if(!object.hasOwnProperty(prop)
+         || typeof object[prop] !== typeof template[prop]
+         || (typeof template[prop] === 'object'
+             && !recursiveMatch(template[prop], object[prop]))
+         || (typeof template[prop] !== 'object'
+             && template[prop] !== object[prop])) {
+        return false
+      }
+    }
+    return true
+  }
+
+  for(let object of array) {
+    if(recursiveMatch(template, object)) {
+      return true
+    }
+  }
+  return false
 }
 
 /**

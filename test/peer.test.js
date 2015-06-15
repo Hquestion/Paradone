@@ -1,13 +1,20 @@
 /*global sinon, expect, before, describe, it*/
 'use strict'
 
-var Peer = require('../src/peer.js')
+var proxyquire = require('proxyquireify')(require)
+var Peer = proxyquire('../src/peer.js', {
+  './signal.js': function() {
+    return {
+      send: function(message) {
+        console.debug('Mocked signal send', message)
+      }
+    }
+  }
+})
 var MessageEmitter = require('../src/messageEmitter.js')
 var options = {
   signal: { url: 'ws://127.0.0.1'}
 }
-window.paradone = window.paradone || {}
-window.paradone.Peer = Peer
 
 var newpeer = function(id) {
   var p = new Peer(options)
@@ -18,13 +25,6 @@ var newpeer = function(id) {
 
 describe('Peer', function() {
   this.timeout(5000)
-
-  describe('@constructor', function() {
-    it('should be a EventEmitter', function() {
-      var peer = newpeer('a')
-      expect(peer instanceof MessageEmitter).to.be.true
-    })
-  })
 
   /*
    * It should go like this
@@ -226,11 +226,11 @@ describe('Peer', function() {
         })
       })
     })
+
   })
 
   describe('Timeout messages', function() {
-
-    it('should store non-connection related messages', function() {
+    it('should store connection related messages', function() {
       var peer = newpeer('1')
       peer.send({
         type: 'offer',
@@ -264,21 +264,64 @@ describe('Peer', function() {
         ttl: 3,
         forwardBy: []
       })
-      expect(peer.queue).to.empty
+      expect(peer.queue).to.have.length(4)
+    })
+
+    it('should not store connection related message that were forwarded to the peer', function() {
+      var peer = newpeer('1')
       peer.send({
-        type: 'test',
+        type: 'offer',
+        from: 'b',
+        to: 'a',
+        data: '',
+        ttl: 3,
+        forwardBy: []
+      })
+      peer.send({
+        type: 'request-peer',
+        from: 'b',
+        to: 'a',
+        data: '',
+        ttl: 3,
+        forwardBy: []
+      })
+      peer.send({
+        type: 'answer',
+        from: 'b',
+        to: 'a',
+        data: '',
+        ttl: 3,
+        forwardBy: []
+      })
+      peer.send({
+        type: 'icecandidate',
+        from: 'b',
+        to: 'a',
+        data: '',
+        ttl: 3,
+        forwardBy: []
+      })
+      expect(peer.queue).to.be.empty
+    })
+
+    it('should store non connection related messages', function() {
+      var peer = newpeer('1')
+      peer.send({
+        type: 'queuetest',
         from: peer.id,
         to: 'a',
         data: ''
       })
-      expect(peer.queue).to.have.length(1)
-      peer.send({
-        type: 'test2',
-        from: peer.id,
-        to: 'a',
-        data: ''
-      })
+      // Should contain the `queuetest` and `request-peer` messages
       expect(peer.queue).to.have.length(2)
+      peer.send({
+        type: 'queuetest2',
+        from: peer.id,
+        to: 'a',
+        data: ''
+      })
+      // The `request-peer` is already present only `queuetest2` will be stored
+      expect(peer.queue).to.have.length(3)
     })
 
     it('should drop messages after timeout and executes the callbacks', function(done) {
@@ -292,19 +335,19 @@ describe('Peer', function() {
       }, Peer.queueTimeout * 1.5, done)
 
       // After sending
-      expect(peer.queue).to.have.length(1)
+      expect(peer.queue).to.have.length(2)
       // Just before timeout
       clock.tick(Peer.queueTimeout - 1)
-      expect(peer.queue).to.have.length(1)
+      expect(peer.queue).to.have.length(2)
       // Just after first timeout
       clock.tick(2)
-      expect(peer.queue).to.have.length(1)
+      expect(peer.queue).to.have.length(2)
       // After message timeout and before second queue timeout
       clock.tick(Peer.queueTimeout / 2)
-      expect(peer.queue).to.have.length(1)
+      expect(peer.queue).to.have.length(2)
       // After second queue timeout
       clock.tick(Peer.queueTimeout / 2)
-      expect(peer.queue).to.have.length(0)
+      expect(peer.queue).to.have.length(1)
 
       clock.restore()
     })

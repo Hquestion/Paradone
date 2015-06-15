@@ -41,7 +41,7 @@ function Signal(peer, options) {
 
   socket.addEventListener('open', () => this.status = 'open')
   socket.addEventListener('close', () => this.status = 'close')
-  socket.addEventListener('error', (error) => console.error(error))
+  // socket.addEventListener('error', (error) => console.error(error))
   socket.addEventListener('message', (event) => {
     var message = JSON.parse(event.data)
     peer.dispatchMessage(message)

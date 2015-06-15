@@ -2,7 +2,13 @@
   "name": "Paradone",
   "version": "0.3.0",
   "description": "Peer-to-peer assisted media diffusion in the browser with WebRTC and MediaSource",
-  "keywords": ["p2p", "html5", "streaming", "webrtc", "gossip", "media source"],
+  "keywords": [
+    "p2p",
+    "streaming",
+    "webrtc",
+    "gossip",
+    "media source"
+  ],
   "homepage": "https://paradone.github.io",
   "author": "GaspardP",
   "license": "AGPLv3",
@@ -31,7 +37,7 @@
     "babelify": "6.1.x",
     "browserify": "10.2.x",
     "esperanto": "0.7.x",
-    "jsdoc": "^3.3.0-beta3",
+    "jsdoc": "3.3.x",
     "karma": "0.12.x",
     "karma-browserify": "4.2.x",
     "karma-chai": "0.1.x",
@@ -42,6 +48,7 @@
     "karma-mocha-reporter": "1.x.x",
     "karma-notify-reporter": "0.1.x",
     "karma-sinon": "1.x.x",
+    "proxyquireify": "2.1.x",
     "uglify-js": "2.x.x",
     "watchify": "3.x.x",
     "workerify": "git://github.com/josephros/workerify.git"

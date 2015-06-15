@@ -28,7 +28,8 @@ module.exports = function(config) {
 
     browserify: {
       debug: true,
-      transform: ['babelify']
+      transform: ['babelify'],
+      plugin: ['proxyquireify/plugin']
     },
 
     // test results reporter to use

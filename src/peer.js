@@ -160,7 +160,7 @@ Peer.prototype.broadcast = function(message) {
     // Do not send the message to nodes that forwarded it
     if(remoteId !== 'signal' &&
        !contains(remoteId, from) &&
-       connection.status === 'open') {
+       connection.readyState === 'open') {
       connection.send(message)
       targets += 1
     }
@@ -170,7 +170,7 @@ Peer.prototype.broadcast = function(message) {
   // it through the signal
   if(targets === 0 && message.from === this.id) {
     if(this.connections.has('signal') &&
-       this.connections.get('signal').status === 'open') {
+       this.connections.get('signal').readyState === 'open') {
       // Signal is available
       this.connections.get('signal').send(message)
     } else {
@@ -271,7 +271,7 @@ var onanswer = function(message) {
   //TODO Check status in PeerConnection
   var from = message.from
   var answer = new RTCSessionDescription(message.data)
-  var status = this.connections.get(from).status
+  var status = this.connections.get(from).readyState
 
   // TODO Assert should check the connection status RTCSignalingState which can
   // be stable, have-local-offer, have-remote-offer, have-local-pranswer,
@@ -357,7 +357,7 @@ var onrequestpeer = function(message) {
   // TODO Check we don't already have the connection
   var remote = message.from
   if(this.connections.has(remote) &&
-     this.connections.get(remote).status !== 'close') {
+     this.connections.get(remote).readyState !== 'closed') {
     return
   }
 
@@ -461,7 +461,7 @@ Peer.prototype.processMessage = function(element, queue) {
 
   let isConnectedWith = remote =>
         this.connections.has(remote) &&
-        this.connections.get(remote).status === 'open'
+        this.connections.get(remote).readyState === 'open'
 
   if(isConnectedWith(to)) {
     // Recipient is available and connected

@@ -55,7 +55,6 @@ export const options = {
  * status of the Peer
  */
 var onclose = function(peer, peerConnection, remotePeer, event) {
-  peerConnection.status = 'close'
   peer.dispatchMessage({
     type: 'disconnected',
     to: peer.id,
@@ -96,7 +95,6 @@ var onopen = function(peer, peerConnection, remotePeer, event) {
   var channel = event.target
   if('open' === channel.readyState.toLowerCase()) {
     peerConnection.channel = channel
-    peerConnection.status = 'open'
     peer.dispatchMessage({
       type: 'connected',
       from: remotePeer,

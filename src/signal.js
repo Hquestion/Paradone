@@ -30,20 +30,22 @@ export default Signal
  * @param {Object} options
  *
  * @property {WebSocket} socket - Connection to the signaling system
+ * @property {string} url - Url of the WebSocket
+ * @property {RTCDataChannelState} readyState - State of the connection with the
+ *           socket server mapped as a RTCDataChannelState (strings insteand of
+ *           constant integer)
  */
 function Signal(peer, options) {
   if(typeof options === 'undefined' ||
      typeof options.url === 'undefined') {
     throw new Error('Signal\'s options argument malformed')
   }
-  var url = options.url
-  var socket = new WebSocket(url)
+  let url = options.url
+  let socket = new WebSocket(url)
 
-  socket.addEventListener('open', () => this.status = 'open')
-  socket.addEventListener('close', () => this.status = 'close')
-  // socket.addEventListener('error', (error) => console.error(error))
-  socket.addEventListener('message', (event) => {
-    var message = JSON.parse(event.data)
+  socket.addEventListener('error', error => console.error(error))
+  socket.addEventListener('message', event => {
+    let message = JSON.parse(event.data)
     peer.dispatchMessage(message)
   })
 
@@ -57,6 +59,24 @@ function Signal(peer, options) {
   }
 
 }
+
+// Bind readyState to the readyState of the socket
+Object.defineProperty(Signal.prototype, 'readyState', {
+  get: function() {
+    switch(this.socket.readyState) {
+    case WebSocket.CONNECTING:
+      return 'connecting'
+    case WebSocket.OPEN:
+      return 'open'
+    case WebSocket.CLOSING:
+      return 'closing'
+    case WebSocket.CLOSED:
+      return 'closed'
+    default:
+      throw new Error('Unknown `readyState` for the WebSocket')
+    }
+  }
+})
 
 /**
  * Sends message to the signaling system
@@ -78,7 +98,7 @@ Signal.prototype.send = function(message) {
  * @param {string} id - Id of the peer
  */
 var activateKeepAlive = function(socket, id) {
-  var keepalive = window.setInterval(() => {
+  let keepalive = window.setInterval(() => {
     socket.send(JSON.stringify({
       type: 'signal:keepalive',
       from: id,

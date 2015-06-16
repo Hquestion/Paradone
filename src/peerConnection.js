@@ -62,6 +62,14 @@ var RTCConfiguration = {
 }
 var MediaConstraints// Should NOT be defined
 
+Object.defineProperty(RTCPeerConnection.prototype, 'readyState', {
+  get: function() {
+    return typeof this.channel === 'undefined' ?
+      'connecting' : this.channel.readyState
+  },
+  configurable: true
+})
+
 /**
  * The PeerConnection is a RTCPeerConnection configured to forward event to the
  * Peer object attached to it.
@@ -72,7 +80,8 @@ var MediaConstraints// Should NOT be defined
  * @param {string} remotePeer - Id of the remote peer
  * @property {string} id - Id of the peer
  * @property {string} remotePeer - Id of the remote peer
- * @property {string} status - Indicates the state of the connection
+ * @property {RTCDataChannelState} readyState - Indicates the state of the
+ *           connection
  */
 function PeerConnection(peer, remotePeer) {
   // TODO Inheritance: Can we extend RTCPeerConnection directly?
@@ -82,7 +91,6 @@ function PeerConnection(peer, remotePeer) {
 
   pc.id = id
   pc.remotePeer = remotePeer
-  pc.status = 'connecting'
 
   /**
    * Create and configure the DataChannel for the PeerConnection
@@ -142,7 +150,7 @@ function PeerConnection(peer, remotePeer) {
    * @param {Message} message - message that should be sent to the remote peer
    */
   pc.send = function(message) {
-    if('open' === pc.status) {
+    if('open' === pc.readyState) {
       pc.channel.send(JSON.stringify(message))
     }
   }

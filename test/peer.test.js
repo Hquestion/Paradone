@@ -222,7 +222,7 @@ describe('Peer', function() {
 
       describe('C should be connected', function() {
         it('should have an open connection', function() {
-          expect(peerC.connections.get(peerB.id).status).to.be.equal('open')
+          expect(peerC.connections.get(peerB.id).readyState).to.be.equal('open')
         })
       })
     })

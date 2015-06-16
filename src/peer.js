@@ -155,11 +155,11 @@ Peer.prototype.broadcast = function(message) {
   from.push(message.from)
 
   // Get all open connections which have not received the message yet
-  this.connections.forEach(function(connection, peerId) {
+  this.connections.forEach(function(connection, remoteId) {
     // Do not send to signal and nodes that already had this message
     // Do not send the message to nodes that forwarded it
-    if(peerId !== 'signal' &&
-       !contains(peerId, from) &&
+    if(remoteId !== 'signal' &&
+       !contains(remoteId, from) &&
        connection.status === 'open') {
       connection.send(message)
       targets += 1
@@ -200,56 +200,14 @@ Peer.prototype.send = function(message, timeout, callback) {
     throw new Error('Message object is invalid')
   }
 
-  let queue = this.queue
   let to = message.to
-  let hasPeerRequest = () => {
-    var match = containsMatch({
-      message: {
-        type: 'request-peer',
-        from: message.from,
-        to: to
-      }
-    }, queue)
-    return match
-  }
-  let addToQueue = () => {
-    let timestamp = Date.now()
-    // Check if the message is a request for a peer connection
-    if(message.type !== 'request-peer') {
-      this.queue.push({ message, callback, timeout, timestamp })
-    }
-    // Check if the request for the recipient as not already been queued
-    if(!contains(to, ['signal', 'source']) && !hasPeerRequest()) {
-      if(message.type === 'request-peer') {
-        this.queue.push({ message, callback, timeout, timestamp })
-      } else {
-        // If the message is destined to a peer
-        this.requestPeer(to)
-      }
-    }
-  }
+  let timestamp = Date.now()
 
   if(to === this.id) {
     // Message for itself
     this.dispatchMessage(message)
-  } else if(this.connections.has(to) &&
-            this.connections.get(to).status === 'open') {
-    // Node is already connected to desired recipient
-    this.connections.get(to).send(message)
-  } else if(Array.isArray(message.route) &&
-            this.connections.has(message.route[0])) {
-    // The message knows some route
-    // TODO Replace with Cord like lookup
-    to = message.route.shift()
-    this.connections.get(to).send(message)
-  } else if(contains(message.type, Peer.forwardableTypes)) {
-    // Message is connection related and should be forwarded
-    if(!this.broadcast(message)) {
-      // The message could not be broadcasted
-      addToQueue(message)
-    }
   } else {
-    addToQueue(message)
+    this.processMessage({ message, callback, timeout, timestamp }, this.queue)
   }
 }
 
@@ -446,40 +404,82 @@ var onconnected = function(message) {
  * the queue.
  */
 var processQueue = function() {
+  let now = Date.now()
+  let queue = []
 
-  let connections = this.connections
-  let broadcast = this.broadcast.bind(this)
+  this.queue.forEach(elt => {
+    let timeout = elt.timeout
+    let timestamp = elt.timestamp
 
-  this.queue = this.queue.reduce(function(acc, elt) {
-
-    let message = elt.message
-    let now = Date.now()
-
-    if(typeof elt.timeout === 'number' && now - elt.timestamp > elt.timeout) {
+    if(typeof timeout === 'number' && (now - timestamp) > timeout) {
       // Timeout elapsed
       if(typeof elt.callback !== 'undefined') {
         elt.callback()
       }
-    } else if(connections.has(message.to) &&
-              connections.get(message.to).status === 'open') {
-      // Recipient is available and connected
-      connections.get(message.to).send(message)
-    } else if(contains(message.type, Peer.forwardableTypes)) {
-      // Message might be broadcasted
-      if(typeof elt.timeout === 'number') {
-        // Reduce the timeout if available
-        let delta = now - elt.timestamp
-        elt.timeout -= delta
-      }
-
-      if(!broadcast(message)) {
-        acc.push(elt)
-      }
     } else {
-      // Wait a little while longer
-      acc.push(elt)
+      this.processMessage(elt, queue)
     }
+  })
 
-    return acc
-  }, [])
+  this.queue = queue
+}
+
+/**
+ * Tries to send a message depending on the available connections and the type
+ * of the message. Non transmitted messages will be stored in a queue.
+ *
+ * @param {Object} element
+ * @param {Message} element.message
+ * @param {function} element.callback
+ * @param {number} element.timeout
+ * @param {number} element.timestamp
+ * @param {Array.<Object>} queue
+ */
+Peer.prototype.processMessage = function(element, queue) {
+  let message = element.message
+  let to = message.to
+
+  let queueHasPeerRequest = () => containsMatch({
+    message: {
+      type: 'request-peer',
+      from: message.from,
+      to: to
+    }
+  }, queue)
+
+  let addMessageToQueue = () => {
+    // Check if the message is a request for a peer connection
+    if(contains(message.to, ['signal', 'source'])) {
+      queue.push(element)
+    } else if(message.type !== 'request-peer' || !queueHasPeerRequest()) {
+      queue.push(element)
+      if(message.type !== 'request-peer') {
+        this.requestPeer(to)
+      }
+    }
+  }
+
+  let isConnectedWith = remote =>
+        this.connections.has(remote) &&
+        this.connections.get(remote).status === 'open'
+
+  if(isConnectedWith(to)) {
+    // Recipient is available and connected
+    this.connections.get(message.to).send(message)
+
+  } else if(Array.isArray(message.route) &&
+            isConnectedWith(message.route[0])) {
+    // The message knows some route
+    let to = message.route.shift()
+    this.connections.get(to).send(message)
+
+  } else if(contains(message.type, Peer.forwardableTypes)) {
+    // Broadcast has side effect
+    if(!this.broadcast(message)) {
+      addMessageToQueue()
+    }
+  } else {
+    // Wait a little while longer
+    addMessageToQueue()
+  }
 }

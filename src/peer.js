@@ -169,14 +169,23 @@ Peer.prototype.broadcast = function(message) {
   // No neighbour for broadcast and the message is from the peer: we try to send
   // it through the signal
   if(targets === 0 && message.from === this.id) {
-    if(this.connections.has('signal') &&
-       this.connections.get('signal').readyState === 'open') {
-      // Signal is available
-      this.connections.get('signal').send(message)
-    } else {
-      // The peer needs to reconnect to the Signal
+    if(!this.connections.has('signal')) {
       this.connections.set('signal', new Signal(this, this.options.signal))
-      // Store it in queue while we wait for a response a Signal
+    }
+
+    let signal = this.connections.get('signal')
+
+    switch(signal.readyState) {
+    case 'open':
+      signal.send(message)
+      return true
+    case 'closing':
+    case 'closed':
+      this.connections.set('signal', new Signal(this, this.options.signal))
+      return false
+    case 'connecting':
+      return false
+    default:
       return false
     }
   }

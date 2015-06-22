@@ -99,6 +99,7 @@ function Peer(options) {
   this.ttl = Peer.ttl
   this.queue = []
   this.options = options
+  this.requested = {}
 
   this.connections.set('signal', signal)
   window.setInterval(processQueue.bind(this), Peer.queueTimeout)
@@ -471,6 +472,18 @@ Peer.prototype.processMessage = function(element, queue) {
   let isConnectedWith = remote =>
         this.connections.has(remote) &&
         this.connections.get(remote).readyState === 'open'
+
+  // Filter out multiple request to the same peer
+  if(message.from === this.id && message.type === 'request-peer') {
+    let previousTime = this.requested[message.to]
+    let now = Date.now()
+    let delta = 5000
+    if(typeof previousTime === 'number' && now - previousTime < delta) {
+      return
+    } else {
+      this.requested[message.to] = now
+    }
+  }
 
   if(isConnectedWith(to)) {
     // Recipient is available and connected

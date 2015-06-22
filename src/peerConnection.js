@@ -91,6 +91,7 @@ function PeerConnection(peer, remotePeer) {
 
   pc.id = id
   pc.remotePeer = remotePeer
+  pc.timestamp = Date.now()
 
   /**
    * Create and configure the DataChannel for the PeerConnection
@@ -150,6 +151,7 @@ function PeerConnection(peer, remotePeer) {
    * @param {Message} message - message that should be sent to the remote peer
    */
   pc.send = function(message) {
+    this.timestamp = Date.now
     if('open' === pc.readyState) {
       pc.channel.send(JSON.stringify(message))
     }

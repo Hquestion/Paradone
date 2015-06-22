@@ -45,12 +45,14 @@ function Signal(peer, options) {
 
   socket.addEventListener('error', error => console.error(error))
   socket.addEventListener('message', event => {
+    this.timestamp = Date.now()
     let message = JSON.parse(event.data)
     peer.dispatchMessage(message)
   })
 
   this.socket = socket
   this.url = url
+  this.timestamp = Date.now()
 
   // If the signal is connected to a Heroku instance the connection will be
   // closed by the server after 30 seconds of inactivity
@@ -75,7 +77,8 @@ Object.defineProperty(Signal.prototype, 'readyState', {
     default:
       throw new Error('Unknown `readyState` for the WebSocket')
     }
-  }
+  },
+  enumerable: true
 })
 
 /**
@@ -85,9 +88,19 @@ Object.defineProperty(Signal.prototype, 'readyState', {
  * @param {Message} message
  */
 Signal.prototype.send = function(message) {
+  this.timestamp = Date.now()
   message.ttl = 0
   message = JSON.stringify(message)
   this.socket.send(message)
+}
+
+/**
+ * Terminates the connection with the Signaling system by closing the web socket
+ *
+ * @function Signal#close
+ */
+Signal.prototype.close = function() {
+  this.socket.close()
 }
 
 /**

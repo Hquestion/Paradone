@@ -1,4 +1,4 @@
-/*global sinon, expect, before, describe, it*/
+/*global sinon, expect, before, after, describe, it*/
 'use strict'
 
 var proxyquire = require('proxyquireify')(require)
@@ -324,32 +324,51 @@ describe('Peer', function() {
       expect(peer.queue).to.have.length(3)
     })
 
-    it('should drop messages after timeout and executes the callbacks', function(done) {
+    describe('clearing the queue after a timeout', function(done) {
       var clock = sinon.useFakeTimers()
       var peer = newpeer('1')
-      peer.send({
-        type: 'queuetest',
-        from: peer.id,
-        to: 'a',
-        data: ''
-      }, Peer.queueTimeout * 1.5, done)
 
-      // After sending
-      expect(peer.queue).to.have.length(2)
-      // Just before timeout
-      clock.tick(Peer.queueTimeout - 1)
-      expect(peer.queue).to.have.length(2)
-      // Just after first timeout
-      clock.tick(2)
-      expect(peer.queue).to.have.length(2)
-      // After message timeout and before second queue timeout
-      clock.tick(Peer.queueTimeout / 2)
-      expect(peer.queue).to.have.length(2)
-      // After second queue timeout
-      clock.tick(Peer.queueTimeout / 2)
-      expect(peer.queue).to.have.length(1)
+      before(function() {
+        peer.send({
+          type: 'queuetest',
+          from: peer.id,
+          to: 'a',
+          data: ''
+        }, Peer.queueTimeout * 1.5, done)
+      })
 
-      clock.restore()
+      it('should have `queuetest` and the auto-generated `request-peer`', function() {
+        // After sending
+        expect(peer.queue).to.have.length(2)
+      })
+
+      it('should have the 2 messages bis', function() {
+        // Just before timeout
+        clock.tick(Peer.queueTimeout - 1)
+        expect(peer.queue).to.have.length(2)
+      })
+
+      it('first run the proccessQueue: should have the 2 messages ter', function() {
+        // Just after first timeout
+        clock.tick(2)
+        expect(peer.queue).to.have.length(2)
+      })
+
+      it('should have the 2 messages quad?', function() {
+        // After message timeout and before second queue timeout
+        clock.tick(Peer.queueTimeout / 2)
+        expect(peer.queue).to.have.length(2)
+      })
+
+      it('should have cleared the queue', function() {
+        // After second queue timeout
+        clock.tick(Peer.queueTimeout / 2)
+        expect(peer.queue).to.have.length(0)
+      })
+
+      after(function() {
+        clock.restore()
+      })
     })
   })
 

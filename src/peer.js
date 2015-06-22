@@ -225,17 +225,17 @@ Peer.prototype.send = function(message, timeout, callback) {
  * Send a new request for peers to everyone
  *
  * @function Peer#requestPeer
- * @param {string} [to='-1'] - To whom the node needs to open a connection. '-1'
- *        means no particular peer
+ * @param {string} to - To whom the node needs to open a connection. '-1' means
+ *        no particular peer
  */
-Peer.prototype.requestPeer = function(to='-1') {
+Peer.prototype.requestPeer = function(to, timeout, callback) {
   this.send({
     type: 'request-peer',
     from: this.id,
     to: to,
     ttl: this.ttl,
     forwardBy: []
-  })
+  }, timeout, callback)
 }
 
 /**
@@ -408,6 +408,31 @@ var onconnected = function(message) {
 }
 
 /**
+ * Removes unused connections after a while
+ */
+var cleanConnections = function() {
+  let delta = 10000
+  let now = Date.now()
+
+  this.connections.forEach((cx, key, map) => {
+    // Prevent the nodes from automatically closing Signal for now
+    if(key === 'signal') {
+      return
+    }
+    // If the connection is too old
+    if(cx.readyState === 'open' && now - cx.timestamp > delta) {
+      console.info('Connection with', key, 'terminated due to innactivity')
+      cx.close()
+    }
+    // Remove every closed connections (could have been a remote disconnection
+    // and not a timeout)
+    if(cx.readyState === 'closed') {
+      map.delete(key)
+    }
+  })
+}
+
+/**
  * Check if messages have reached their timeout and executes their callbacks. If
  * a message wasn't send with a timeout it will be kept forever in the queue. If
  * a callback was given it will be triggered when the message is removed from
@@ -432,6 +457,7 @@ var processQueue = function() {
   })
 
   this.queue = queue
+  cleanConnections.call(this)
 }
 
 /**
@@ -464,7 +490,7 @@ Peer.prototype.processMessage = function(element, queue) {
     } else if(message.type !== 'request-peer' || !queueHasPeerRequest()) {
       queue.push(element)
       if(message.type !== 'request-peer') {
-        this.requestPeer(to)
+        this.requestPeer(to, element.timeout)
       }
     }
   }
@@ -472,18 +498,6 @@ Peer.prototype.processMessage = function(element, queue) {
   let isConnectedWith = remote =>
         this.connections.has(remote) &&
         this.connections.get(remote).readyState === 'open'
-
-  // Filter out multiple request to the same peer
-  if(message.from === this.id && message.type === 'request-peer') {
-    let previousTime = this.requested[message.to]
-    let now = Date.now()
-    let delta = 5000
-    if(typeof previousTime === 'number' && now - previousTime < delta) {
-      return
-    } else {
-      this.requested[message.to] = now
-    }
-  }
 
   if(isConnectedWith(to)) {
     // Recipient is available and connected

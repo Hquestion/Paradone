@@ -87,6 +87,11 @@ export function getURL(pathToFile) {
 }
 
 /**
+ * @typedef XHRResponse
+ * @type {(DOMString | ArrayBuffer | Blob | Document | string)}
+ */
+
+/**
  * Return the result of a XHR as a promise. If the XHR succeed, the resolve
  * function of the promise will have the file requested as first parameter.
  *
@@ -95,15 +100,15 @@ export function getURL(pathToFile) {
  * @param {string} [responseType='blob'] - Type returned by the server
  * @param {string} [range=''] - If a range should be requested instead of the
  *        entire file
- * @return {Promise} a new Promise holding the file's URL and ArrayBuffer
+ * @return {Promise<XHRResponse>} a new Promise with the XHR response
  */
 export function getRemoteFile(fileUrl, responseType = 'blob', range = '') {
   const DEFAULT_STATUS = 200
   const RANGE_STATUS = 206
 
   return new Promise(function(resolve, reject) {
-    var status
-    var xhr = new XMLHttpRequest()
+    let status
+    let xhr = new XMLHttpRequest()
     xhr.open('GET', fileUrl, true)
     xhr.responseType = responseType
 
@@ -124,8 +129,30 @@ export function getRemoteFile(fileUrl, responseType = 'blob', range = '') {
         }
       }
     }
-
     xhr.send()
+  })
+}
+
+export function getRemoteFileWithStats(fileUrl, responseType, range = '') {
+  /**
+   * @return {number} Size of the element in bytes
+   */
+  let sizeOf = function(response) {
+    switch(responseType) {
+    case 'blob':
+      return response.size
+    case 'arraybuffer':
+      return response.byteLength
+    default:
+      return 0
+    }
+  }
+
+  let delay = Date.now()
+
+  return getRemoteFile(fileUrl, responseType, range).then(response => {
+    delay = Date.now() - delay
+    return {data: response, bandwidth: sizeOf(response) / delay}
   })
 }
 
@@ -211,6 +238,15 @@ export function messageIsValid(msg) {
   }).reduce(((acc, elt) => acc && elt), true)
 
   return originals && additionals
+}
+
+/**
+ * @function module:util~meanArray
+ * @param {Array.<number>}
+ * @return {number | NaN} The mean or `NaN` if the array is empty
+ */
+export function meanArray(array) {
+  return array.reduce((acc, val) => acc + val, 0) / array.length
 }
 
 /**

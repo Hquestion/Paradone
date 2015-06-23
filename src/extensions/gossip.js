@@ -20,6 +20,9 @@
  */
 'use strict'
 
+import {meanArray} from '../util.js'
+export default Gossip
+
 /**
  * @typedef View
  * @desc A list of NodeDescriptors
@@ -48,10 +51,11 @@
  * @property {Worker} worker - Web worker used to process messages behind the
  *           scenes
  */
-export default function Gossip(options) {
+function Gossip(options) {
+  this.bandwidths = []
   this.worker = new Worker('./gossipWorker.js')
   this.worker.addEventListener('message', evt => {
-    var message = evt.data
+    let message = evt.data
     if(message.to === this.id) {
       this.dispatchMessage(message)
     } else {
@@ -59,12 +63,41 @@ export default function Gossip(options) {
     }
   })
 
-  // Worker#postMessage doesn't seem to be a valid listener, we need to wrap it
-  this.on('first-view', msg => this.worker.postMessage(msg))
-  this.on('gossip:request-exchange', msg => this.worker.postMessage(msg))
-  this.on('gossip:answer-request', msg => this.worker.postMessage(msg))
-  this.on('gossip:descriptor-update', msg => this.worker.postMessage(msg))
+  /**
+   * @return {number} The number of connections the peer should have for a
+   *         correct distribution of the data on the network
+   */
+  this.getMaxConnections = function() {
+    const meanfanout = Math.log(this.view.length)
+    const bw = meanArray(this.bandwidths)
+    let meanbw = meanArray(
+      this.view
+        .filter(nd => typeof nd.media !== 'undefined' &&
+                      typeof nd.media.bandwidth !== 'undefined')
+        .map(nd => nd.media.bandwidth))
 
+    return isNaN(meanbw) ? meanfanout : meanfanout * bw / meanbw
+  }
+
+  // Worker#postMessage doesn't seem to be a valid listener, we need to wrap it
+  let dispatch = msg => this.worker.postMessage(msg)
+  this
+    .on('first-view', dispatch)
+    .on('gossip:request-exchange', dispatch)
+    .on('gossip:answer-request', dispatch)
+    .on('gossip:descriptor-update', dispatch)
+
+  this.on('gossip:bandwidth', msg => {
+    this.bandwidths.push(msg.data)
+    msg.type = 'gossip:descriptor-update'
+    msg.data = {
+      path: ['media', 'bandwidth'],
+      value: meanArray(this.bandwidths)
+    }
+    dispatch(msg)
+  })
+
+  // Messages from the Web Worker
   this.on('gossip:view-update', msg => this.view = msg.data)
 
   // Initialization of the Web Worker

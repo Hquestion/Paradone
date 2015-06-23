@@ -142,4 +142,23 @@ describe('Util', function() {
 
   })
 
+  describe('meanArray', function() {
+    it('should return NaN for empty array', function() {
+      expect(util.meanArray([])).to.be.NaN
+    })
+
+    it('should return the only value', function() {
+      expect(util.meanArray([1])).to.be.eq(1)
+      expect(util.meanArray([-1])).to.be.eq(-1)
+      expect(util.meanArray([0])).to.be.eq(0)
+      expect(util.meanArray([2])).to.be.eq(2)
+    })
+
+    it('should return the mean of the array', function() {
+      expect(util.meanArray([1, 1, 1, 1])).to.be.eq(1)
+      expect(util.meanArray([-1, -1, -1])).to.be.eq(-1)
+      expect(util.meanArray([2, 0, -2])).to.be.eq(0)
+      expect(util.meanArray([1, 2, 3])).to.be.eq(2)
+    })
+  })
 })

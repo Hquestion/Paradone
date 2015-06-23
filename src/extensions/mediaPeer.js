@@ -21,7 +21,7 @@
 'use strict'
 
 import Media from './media.js'
-import { contains, getURL, getRemoteFile } from '../util.js'
+import { contains, getURL, getRemoteFile, getRemoteFileWithStats } from '../util.js'
 import { filter, forEach, merge, pipe } from 'ramda'
 export default MediaPeer
 
@@ -70,15 +70,26 @@ var askForNextParts = function(media, nbParts) {
    */
   var downloadFromServer = (peer, partNumber) => () => {
     var partRange = media.getRangeOfPart(partNumber)
-    getRemoteFile(media.url, 'arraybuffer', partRange)
-      .then(part => peer.dispatchMessage({
-        from: this.id,
-        to: this.id,
-        type: 'media:part',
-        data: part,
-        url: media.url,
-        number: partNumber
-      }))
+    getRemoteFileWithStats(media.url, 'arraybuffer', partRange)
+      .then(result => {
+        let {data, bandwidth} = result
+        // Dispatch the part
+        peer.dispatchMessage({
+          from: this.id,
+          to: this.id,
+          type: 'media:part',
+          data: data,
+          url: media.url,
+          number: partNumber
+        })
+        // Dispatch the bandwidth value
+        peer.dispatchMessage({
+          from: this.id,
+          to: this.id,
+          type: 'gossip:bandwidth',
+          data: bandwidth
+        })
+      })
   }
 
   var choices = media.nextPartsToDownload(nbParts)
@@ -162,17 +173,28 @@ var onhead = function(message) {
  * @param {Message.<media:request-head>} message
  */
 var onrequesthead = function(message) {
-  var url = message.url
-  var media = this.files.get(url)
+  let url = message.url
+  let media = this.files.get(url)
+  let range = media.getRangeOfHead()
+  getRemoteFileWithStats(url, 'arraybuffer', range)
+    .then(result => {
+      let {data, bandwidth} = result
 
-  getRemoteFile(url, 'arraybuffer', media.getRangeOfHead())
-    .then(head => this.dispatchMessage({
-      from: this.id,
-      to: this.id,
-      type: 'media:head',
-      url: url,
-      data: head
-    }))
+      this.dispatchMessage({
+        from: this.id,
+        to: this.id,
+        type: 'media:head',
+        url: url,
+        data: data
+      })
+
+      this.dispatchMessage({
+        from: this.id,
+        to: this.id,
+        type: 'gossip:bandwidth',
+        data: bandwidth
+      })
+    })
 }
 
 /**

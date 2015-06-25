@@ -376,6 +376,9 @@ function MediaPeer(options) {
   if(options.hasOwnProperty('autoload') && options.autoload) {
     this.parseDocument()
   }
+
+  this.heavyTypes = this.heavyTypes || new Set()
+  this.heavyTypes.add('media:request-part', 'media:part')
 }
 
 /**

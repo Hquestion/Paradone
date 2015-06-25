@@ -20,8 +20,7 @@
  */
 'use strict'
 
-import {meanArray} from '../util.js'
-export default Gossip
+import { meanArray } from '../util.js'
 
 /**
  * @typedef View
@@ -51,8 +50,9 @@ export default Gossip
  * @property {Worker} worker - Web worker used to process messages behind the
  *           scenes
  */
-function Gossip(options) {
+export default function Gossip(options) {
   this.bandwidths = []
+  this.heavy = this.heavy || new Set()
   this.worker = new Worker('./gossipWorker.js')
   this.worker.addEventListener('message', evt => {
     let message = evt.data
@@ -68,7 +68,7 @@ function Gossip(options) {
    *         correct distribution of the data on the network
    */
   this.getMaxConnections = function() {
-    const meanfanout = Math.log(this.view.length)
+    const meanfanout = Math.ceil(Math.log(this.view.length + 1))
     const bw = meanArray(this.bandwidths)
     let meanbw = meanArray(
       this.view
@@ -79,6 +79,30 @@ function Gossip(options) {
     return isNaN(meanbw) ? meanfanout : meanfanout * bw / meanbw
   }
 
+  /**
+   * @return {number} Current number of heavy connections
+   */
+  this.getHeavyConnections = function() {
+    let sum = 0
+    this.connections.forEach(c => {
+      if(c.weight === 'heavy') {
+        sum += 1
+      }
+    })
+    return sum
+  }
+
+  /**
+   * Check if a message is of a heavy type
+   *
+   * @param {Message} message
+   * @return {boolean}
+   */
+  this.isHeavy = function(message) {
+    return this.heavyTypes.has(message.type)
+  }
+
+  // Messages handled directly by the worker
   // Worker#postMessage doesn't seem to be a valid listener, we need to wrap it
   let dispatch = msg => this.worker.postMessage(msg)
   this
@@ -87,17 +111,12 @@ function Gossip(options) {
     .on('gossip:answer-request', dispatch)
     .on('gossip:descriptor-update', dispatch)
 
-  this.on('gossip:bandwidth', msg => {
-    this.bandwidths.push(msg.data)
-    msg.type = 'gossip:descriptor-update'
-    msg.data = {
-      path: ['media', 'bandwidth'],
-      value: meanArray(this.bandwidths)
-    }
-    dispatch(msg)
-  })
+  // Messages handled by the Peer
+  this
+    .on('gossip:bandwidth', onbandwidth.bind(this))
+    .on('gossip:weight', onweight.bind(this))
 
-  // Messages from the Web Worker
+  // Messages from the Web Worker to the Peer
   this.on('gossip:view-update', msg => this.view = msg.data)
 
   // Initialization of the Web Worker
@@ -107,4 +126,76 @@ function Gossip(options) {
     to: 'self',
     data: options
   })
+}
+
+/**
+ * When the node receives informations about its bandwidth we udpate its
+ * descriptor
+ *
+ * @param {Message.<gossip:bandwidth>} message
+ */
+var onbandwidth = function(message) {
+  // Add the new bandwidth
+  this.bandwidths.push(message.data)
+  // Update descriptor
+  this.worker.postMessage({
+    from: this.id,
+    to: this.id,
+    type: 'gossip:descriptor-update',
+    data: {
+      path: ['media', 'bandwidth'],
+      value: meanArray(this.bandwidths)
+    }
+  })
+}
+
+/**
+ * A remote peer asked if the weight of the connection could be changed
+ *
+ * @param {Message<gossip:weight>} message
+ */
+var onweight = function(message) {
+  console.debug(message)
+  switch(message.data) {
+  case 'request-heavy':
+    // The connection is not `heavy` yet and the peer has some slots left
+    if(this.connections.get(message.from).weight === 'light' &&
+       this.getHeavyConnections() < this.getMaxConnections()) {
+      // Acknowledge the upgrade
+      this.respondTo(message, {
+        type: 'gossip:weight',
+        data: 'ack-heavy'
+      })
+      // Change the weight
+      this.connections.get(message.from).weight = 'heavy'
+    } else {
+      // The peer is already at full capacity
+      this.respondTo(message, {
+        type: 'gossip:weight',
+        data: 'noack-heavy'
+      })
+    }
+    return
+  case 'request-light':
+    // Acknowledge the downgrade
+    this.respondTo(message, {
+      type: 'gossip:weight',
+      data: 'ack-light'
+    })
+    // Restore the weight
+    this.connections.get(message.from).weight = 'light'
+    return
+  case 'ack-heavy':
+    // The peer has accepted the upgrade
+    this.connections.get(message.from).weight = 'heavy'
+    return
+  case 'noack-heavy':
+    return
+  case 'ack-light':
+    // The peer has accepted the downgrade
+    this.connections.get(message.from).weight = 'light'
+    return
+  case 'noack-light':
+    return
+  }
 }

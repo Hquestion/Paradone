@@ -92,6 +92,7 @@ function PeerConnection(peer, remotePeer) {
   pc.id = id
   pc.remotePeer = remotePeer
   pc.timestamp = Date.now()
+  pc.weight = 'light'
 
   /**
    * Create and configure the DataChannel for the PeerConnection

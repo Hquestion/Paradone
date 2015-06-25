@@ -61,6 +61,8 @@ var RTCSessionDescription =
  *           ICECandidates for a connection if it's not active yet
  * @property {Object} options - Configuration options passed during
  *           initialization
+ * @property {Array.<QueuedMessage>} queue - Messages that needs a particular
+ *           connection status in order to be sent
  * @property {number} ttl - `Time To Live' of a message
  * @property {Array.<Message>} queue - Message queue
  */
@@ -464,11 +466,7 @@ var processQueue = function() {
  * Tries to send a message depending on the available connections and the type
  * of the message. Non transmitted messages will be stored in a queue.
  *
- * @param {Object} element
- * @param {Message} element.message
- * @param {function} element.callback
- * @param {number} element.timeout
- * @param {number} element.timestamp
+ * @param {QueuedMessage} element
  * @param {Array.<Object>} queue
  */
 Peer.prototype.processMessage = function(element, queue) {
@@ -499,7 +497,10 @@ Peer.prototype.processMessage = function(element, queue) {
         this.connections.has(remote) &&
         this.connections.get(remote).readyState === 'open'
 
-  if(isConnectedWith(to)) {
+  if(this.isHeavy && this.isHeavy(message) &&
+     !contains(to, ['signal', 'source'])) {
+    processHeavy.call(this, element)
+  } else if(isConnectedWith(to)) {
     // Recipient is available and connected
     this.connections.get(message.to).send(message)
 
@@ -519,3 +520,42 @@ Peer.prototype.processMessage = function(element, queue) {
     addMessageToQueue()
   }
 }
+
+/**
+ * @param {QueuedMessage} element
+ */
+var processHeavy = function(element) {
+  let message = element.message
+  let to = message.to
+  let cx = this.connections.get(to)
+  if(typeof cx === 'undefined' ||
+     cx.readyState !== 'open' ||
+     cx.weight !== 'heavy') {
+    // If the connection is not open the request:heavy will automatically
+    // trigger the request-peer
+    this.send({
+      type: 'gossip:weight',
+      from: this.id,
+      to: to,
+      data: 'request-heavy'
+    })
+    // Store the message so it will be processed when the connection is ready
+    this.queue.push(element)
+  } else {
+    // The connection is ready to receive some heavy message
+    cx.send(message)
+  }
+}
+
+/**
+ * @typedef QueuedMessage
+ * @desc A message and additional information relative to when the message
+ *       should be discarded
+ * @type {Object}
+ * @property {Message} message - The actual message
+ * @property {function} [callback] - Callback executed if the message could not
+ *           be sent in time
+ * @property {number} [timeout] - Delay after which the message should be
+ *           discarded and the callback triggered
+ * @property {number} timestamp - When was the message stored
+ */

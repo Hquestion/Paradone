@@ -42,7 +42,9 @@ export default SignalFirebase
  */
 function SignalFirebase(peer, options) {
   this.id = String(Date.now()) + String(Math.random()).slice(1, 6)
-  this.status = 'open' // Interrop with other Connections
+  // Interrop with other Connections
+  this.readyState = 'open'
+  this.weight = { incoming: 'light', outgoing: 'light' }
 
   if(typeof options !== 'undefined') {
     this.firebase = new Firebase(options.url)

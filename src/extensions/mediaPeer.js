@@ -378,7 +378,7 @@ function MediaPeer(options) {
   }
 
   this.heavyTypes = this.heavyTypes || new Set()
-  this.heavyTypes.add('media:request-part', 'media:part')
+  this.heavyTypes.add('media:request-part')
 }
 
 /**

@@ -82,6 +82,10 @@ Object.defineProperty(RTCPeerConnection.prototype, 'readyState', {
  * @property {string} remotePeer - Id of the remote peer
  * @property {RTCDataChannelState} readyState - Indicates the state of the
  *           connection
+ * @property {Object} weight - Status of the connection regarding he transfer of
+ *           large amount of data
+ * @property {string} weight.incoming - Type of data the remote peer will send
+ * @property {string} weight.outgoing - Type of data the peer will send
  */
 function PeerConnection(peer, remotePeer) {
   // TODO Inheritance: Can we extend RTCPeerConnection directly?
@@ -92,7 +96,7 @@ function PeerConnection(peer, remotePeer) {
   pc.id = id
   pc.remotePeer = remotePeer
   pc.timestamp = Date.now()
-  pc.weight = 'light'
+  pc.weight = { incoming: 'light', outgoing: 'light' }
 
   /**
    * Create and configure the DataChannel for the PeerConnection

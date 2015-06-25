@@ -34,6 +34,8 @@ export default Signal
  * @property {RTCDataChannelState} readyState - State of the connection with the
  *           socket server mapped as a RTCDataChannelState (strings insteand of
  *           constant integer)
+ * @property {{incoming:string, outgoing:string}} weight - Type of connection
+ *           should probably stay to light
  */
 function Signal(peer, options) {
   if(typeof options === 'undefined' ||
@@ -53,6 +55,7 @@ function Signal(peer, options) {
   this.socket = socket
   this.url = url
   this.timestamp = Date.now()
+  this.weight = { incoming: 'light', outgoing: 'light' }
 
   // If the signal is connected to a Heroku instance the connection will be
   // closed by the server after 30 seconds of inactivity

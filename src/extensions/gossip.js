@@ -68,6 +68,8 @@ export default function Gossip(options) {
    *         correct distribution of the data on the network
    */
   this.getMaxConnections = function() {
+    // The size of the known network is the size of the partial view plus one
+    // (the peer)
     const meanfanout = Math.ceil(Math.log(this.view.length + 1))
     const bw = meanArray(this.bandwidths)
     let meanbw = meanArray(
@@ -85,7 +87,7 @@ export default function Gossip(options) {
   this.getHeavyConnections = function() {
     let sum = 0
     this.connections.forEach(c => {
-      if(c.weight === 'heavy') {
+      if(c.weight.outgoing === 'heavy') {
         sum += 1
       }
     })
@@ -156,18 +158,27 @@ var onbandwidth = function(message) {
  */
 var onweight = function(message) {
   console.debug(message)
+
+  let connection = this.connections.get(message.from)
+  if(typeof connection === 'undefined' || connection.readyState !== 'open') {
+    throw new Error('`heavy` related communication with dead connection')
+  }
+  let weight = connection.weight
+
   switch(message.data) {
   case 'request-heavy':
     // The connection is not `heavy` yet and the peer has some slots left
-    if(this.connections.get(message.from).weight === 'light' &&
-       this.getHeavyConnections() < this.getMaxConnections()) {
+    if(weight.outgoing === 'heavy') {
+      return
+    } else if(weight.outgoing !== 'heavy' &&
+              this.getHeavyConnections() < this.getMaxConnections()) {
       // Acknowledge the upgrade
       this.respondTo(message, {
         type: 'gossip:weight',
         data: 'ack-heavy'
       })
       // Change the weight
-      this.connections.get(message.from).weight = 'heavy'
+      weight.outgoing = 'heavy'
     } else {
       // The peer is already at full capacity
       this.respondTo(message, {
@@ -177,23 +188,25 @@ var onweight = function(message) {
     }
     return
   case 'request-light':
-    // Acknowledge the downgrade
-    this.respondTo(message, {
-      type: 'gossip:weight',
-      data: 'ack-light'
-    })
-    // Restore the weight
-    this.connections.get(message.from).weight = 'light'
+    if(weight.outgoing !== 'light') {
+      // Acknowledge the downgrade
+      this.respondTo(message, {
+        type: 'gossip:weight',
+        data: 'ack-light'
+      })
+      // Restore the weight
+      weight.outgoing = 'light'
+    }
     return
   case 'ack-heavy':
     // The peer has accepted the upgrade
-    this.connections.get(message.from).weight = 'heavy'
+    weight.incoming = 'heavy'
     return
   case 'noack-heavy':
     return
   case 'ack-light':
     // The peer has accepted the downgrade
-    this.connections.get(message.from).weight = 'light'
+    weight.incoming = 'light'
     return
   case 'noack-light':
     return

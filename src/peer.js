@@ -522,6 +522,8 @@ Peer.prototype.processMessage = function(element, queue) {
 }
 
 /**
+ * Special processing for messages requiring a `heavy` incoming connection
+ *
  * @param {QueuedMessage} element
  */
 var processHeavy = function(element) {
@@ -530,8 +532,8 @@ var processHeavy = function(element) {
   let cx = this.connections.get(to)
   if(typeof cx === 'undefined' ||
      cx.readyState !== 'open' ||
-     cx.weight !== 'heavy') {
-    // If the connection is not open the request:heavy will automatically
+     cx.weight.incoming !== 'heavy') {
+    // If the connection is not open the request-heavy will automatically
     // trigger the request-peer
     this.send({
       type: 'gossip:weight',

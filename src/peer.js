@@ -499,7 +499,7 @@ Peer.prototype.processMessage = function(element, queue) {
 
   if(this.isHeavy && this.isHeavy(message) &&
      !contains(to, ['signal', 'source'])) {
-    processHeavy.call(this, element)
+    processHeavy.call(this, element, queue)
   } else if(isConnectedWith(to)) {
     // Recipient is available and connected
     this.connections.get(message.to).send(message)
@@ -524,9 +524,11 @@ Peer.prototype.processMessage = function(element, queue) {
 /**
  * Special processing for messages requiring a `heavy` incoming connection
  *
- * @param {QueuedMessage} element
+ * @param {QueuedMessage} element - Element processed
+ * @param {Array.<QueuedMessage>} queue - Where to store the elements that were
+ *        not processed
  */
-var processHeavy = function(element) {
+var processHeavy = function(element, queue) {
   let message = element.message
   let to = message.to
   let cx = this.connections.get(to)
@@ -542,7 +544,7 @@ var processHeavy = function(element) {
       data: 'request-heavy'
     })
     // Store the message so it will be processed when the connection is ready
-    this.queue.push(element)
+    queue.push(element)
   } else {
     // The connection is ready to receive some heavy message
     cx.send(message)

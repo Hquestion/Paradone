@@ -41,14 +41,9 @@
  * @const {Object} options
  * @inner
  * @memberof module:datachannel
- * @property {Array.<Object>} optional
+ * @property {Array.<Object>} [optional]
  */
-export const options = {
-  optional: [
-    { DtlsSrtpKeyAgreement: true },
-    { RtpDataChannels: true }
-  ]
-}
+export const options = {}
 
 /**
  * When a peer disconnect the channel is closed. We update the connection's

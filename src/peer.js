@@ -333,7 +333,7 @@ var onicecandidate = function(message) {
 var onoffer = function(message) {
   var remotePeer = message.from
   var remoteSDP = message.data
-  var peerConnection = new PeerConnection(this, remotePeer)
+  var peerConnection = new PeerConnection(this, remotePeer, message.forwardBy)
   /** Add ICE Candidates if they exist */
   var addIceCandidate = function(remotePeer, peerConnection) {
     if(this.icecandidates.has(remotePeer)) {
@@ -373,7 +373,7 @@ var onrequestpeer = function(message) {
     return
   }
 
-  var peerConnection = new PeerConnection(this, message.from)
+  var peerConnection = new PeerConnection(this, message.from, message.forwardBy)
   // Setup the communication channel only on one side
   peerConnection.createChannel()
   // Send the SDP Offer once the connection is created

@@ -87,11 +87,12 @@ Object.defineProperty(RTCPeerConnection.prototype, 'readyState', {
  * @property {string} weight.incoming - Type of data the remote peer will send
  * @property {string} weight.outgoing - Type of data the peer will send
  */
-function PeerConnection(peer, remotePeer) {
+function PeerConnection(peer, remotePeer, route) {
   // TODO Inheritance: Can we extend RTCPeerConnection directly?
   //      RTCPeerConnection.call(this, RTCConfiguration)
   var id = peer.id
   var pc = new RTCPeerConnection(RTCConfiguration, MediaConstraints)
+  route = route.slice()
 
   pc.id = id
   pc.remotePeer = remotePeer
@@ -181,7 +182,8 @@ function PeerConnection(peer, remotePeer) {
       to: remotePeer,
       ttl: peer.ttl,
       data: event.candidate,
-      forwardBy: []
+      forwardBy: [],
+      route: route
     })
   }
 

@@ -18,7 +18,6 @@
  *
  * @flow
  */
-'use strict'
 
 import { shuffleArray } from '../util.js'
 export default GossipAlgorithm

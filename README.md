@@ -70,8 +70,14 @@ Opera.
 The video served to the client must be played within a HTML5 Video tag. You will
 need to check the codec of your files.
 
-Firefox users need to turn the porperty `media.mediasource.webm.enabled` to
-`true` in `about:config`
+Firefox users need to change the following options to be able to use MediaSource
+with Paradone. The configuation options are available on the `about:config`
+page. Available options may vary depending on the version of Firefox.
+
+- Set `media.mediasource.webm.enabled` to `true`
+- Set `media.mediasource.whitelist` to `false`
+- Set `media.mediasource.youtubeonly` to `false`
+- Set `media.mediasource.format-reader` to `false`
 
 #### Server side ####
 

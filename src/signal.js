@@ -18,7 +18,6 @@
  *
  * @flow weak
  */
-'use strict'
 
 export default Signal
 
@@ -45,7 +44,7 @@ function Signal(peer, options) {
   let url = options.url
   let socket = new WebSocket(url)
 
-  socket.addEventListener('error', error => console.error(error))
+  socket.addEventListener('error', console.error.bind(console))
   socket.addEventListener('message', event => {
     this.timestamp = Date.now()
     let message = JSON.parse(event.data)

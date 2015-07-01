@@ -18,7 +18,6 @@
  *
  * @flow weak
  */
-'use strict'
 
 // ES6 Polyfill
 import 'babelify/polyfill'

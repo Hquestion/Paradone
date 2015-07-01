@@ -18,7 +18,6 @@
  *
  * @flow
  */
-'use strict'
 
 import { messageIsValid } from './util.js'
 export default MessageEmitter

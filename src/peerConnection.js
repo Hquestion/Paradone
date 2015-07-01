@@ -18,7 +18,6 @@
  *
  * @flow weak
  */
-'use strict'
 
 import * as datachannel from './datachannel.js'
 export default PeerConnection

@@ -3,11 +3,12 @@
   "version": "0.3.0",
   "description": "Peer-to-peer assisted media diffusion in the browser with WebRTC and MediaSource",
   "keywords": [
+    "datachannel",
+    "gossip",
+    "media source",
     "p2p",
     "streaming",
-    "webrtc",
-    "gossip",
-    "media source"
+    "webrtc"
   ],
   "homepage": "https://paradone.github.io",
   "author": "GaspardP",
@@ -30,25 +31,25 @@
   },
   "dependencies": {
     "localforage": "1.2.x",
-    "ramda": "0.14.x"
+    "ramda": "0.17.x"
   },
   "devDependencies": {
-    "babel": "5.4.x",
+    "babel": "5.8.x",
     "babelify": "6.1.x",
-    "browserify": "10.2.x",
+    "browserify": "11.0.x",
     "esperanto": "0.7.x",
     "jsdoc": "3.3.x",
-    "karma": "0.12.x",
+    "karma": "0.13.x",
     "karma-browserify": "4.2.x",
     "karma-chai": "0.1.x",
-    "karma-chrome-launcher": "0.1.x",
-    "karma-coverage": "0.3.x",
+    "karma-chrome-launcher": "0.2.x",
+    "karma-coverage": "0.4.x",
     "karma-firefox-launcher": "0.1.x",
-    "karma-mocha": "0.1.x",
+    "karma-mocha": "0.2.x",
     "karma-mocha-reporter": "1.x.x",
     "karma-notify-reporter": "0.1.x",
     "karma-sinon": "1.x.x",
-    "proxyquireify": "2.1.x",
+    "proxyquireify": "3.0.x",
     "uglify-js": "2.x.x",
     "watchify": "3.x.x",
     "workerify": "git://github.com/josephros/workerify.git"

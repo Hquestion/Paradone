@@ -18,7 +18,6 @@
  *
  * @flow weak
  */
-'use strict'
 
 /**
  * Wrapper setting handlers of a RTCDatachannel from a given PeerConnection

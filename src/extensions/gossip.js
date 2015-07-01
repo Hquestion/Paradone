@@ -18,7 +18,6 @@
  *
  * @flow
  */
-'use strict'
 
 import { meanArray } from '../util.js'
 
@@ -152,12 +151,11 @@ var onbandwidth = function(message) {
 }
 
 /**
- * A remote peer asked if the weight of the connection could be changed
+ * Handlers for channels' weight related messages
  *
  * @param {Message<gossip:weight>} message
  */
 var onweight = function(message) {
-  console.debug(message)
 
   let connection = this.connections.get(message.from)
   if(typeof connection === 'undefined' || connection.readyState !== 'open') {

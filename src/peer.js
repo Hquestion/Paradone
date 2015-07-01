@@ -18,7 +18,6 @@
  *
  * @flow weak
  */
-'use strict'
 
 import MessageEmitter from './messageEmitter.js'
 import PeerConnection from './peerConnection.js'

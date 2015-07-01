@@ -18,7 +18,6 @@
  *
  * @flow
  */
-'use strict'
 
 import GossipAlgorithm from './gossipAlgo.js'
 import { shuffleArray } from '../util.js'

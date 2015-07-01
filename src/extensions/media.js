@@ -18,7 +18,6 @@
  *
  * @flow weak
  */
-'use strict'
 
 import { contains, shuffleArray, error as errorHandler } from '../util.js'
 import { assoc, find, flatten } from 'ramda'

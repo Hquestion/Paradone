@@ -18,7 +18,6 @@
  *
  * @flow weak
  */
-'use strict'
 
 /**
  * @module util

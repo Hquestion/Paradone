@@ -18,7 +18,6 @@
  *
  * @flow
  */
-'use strict'
 
 import MessageEmitter from '../messageEmitter.js'
 import Algo from './gossipRPS.js'

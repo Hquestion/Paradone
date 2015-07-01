@@ -18,10 +18,14 @@
  *
  * @flow weak
  */
-'use strict'
 
 import Media from './media.js'
-import { contains, getURL, getRemoteFile, getRemoteFileWithStats } from '../util.js'
+import {
+  contains,
+  getURL,
+  getRemoteFile,
+  getRemoteFileWithStats
+} from '../util.js'
 import { filter, forEach, merge, pipe } from 'ramda'
 export default MediaPeer
 

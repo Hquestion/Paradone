@@ -25,4 +25,5 @@
  * Ramda -- Practical functional Javascript
  * https://github.com/ramda/ramda
  * (c) 2013-2015 Scott Sauyet, Michael Hurley, and David Chambers
+ * Ramda may be freely distributed under the MIT license.
  */

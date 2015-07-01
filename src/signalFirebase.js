@@ -18,7 +18,6 @@
  *
  * @flow weak
  */
-'use strict'
 
 /**
  * @external Firebase
